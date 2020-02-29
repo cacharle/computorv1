@@ -6,7 +6,7 @@
 #    By: cacharle <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2020/02/29 11:54:31 by cacharle          #+#    #+#              #
-#    Updated: 2020/02/29 12:00:11 by cacharle         ###   ########.fr        #
+#    Updated: 2020/02/29 12:01:42 by cacharle         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ SRC = $(shell find . -name "*.hs")
 
 all: $(NAME)
 
-$(NAME):
+$(NAME): $(SRC)
 	$(CC) -o $(NAME) $(SRC)
 
 clean:
