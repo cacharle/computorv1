@@ -12,19 +12,21 @@
 
 CC = ghc
 
+SRC_DIR = src
+BUILD_DIR = build
 NAME = computor
 
-SRC = $(shell find . -name "*.hs")
+SRC = $(shell find $(SRC_DIR) -type f -name "*.hs")
 
 all: $(NAME)
 
 $(NAME): $(SRC)
-	$(CC) -o $(NAME) $(SRC)
+	$(CC) --make -outputdir $(BUILD_DIR) -o $(NAME) $(SRC)
 
 clean:
-	rm -f *.o *.hi
+	$(RM) $(BUILD_DIR)/*.o $(BUILD_DIR)/*.hi
 
 fclean: clean
-	rm -f $(NAME)
+	$(RM) $(NAME)
 
 re: fclean all
