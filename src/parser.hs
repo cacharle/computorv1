@@ -1,4 +1,7 @@
-module Parser where
+module Parser
+( parse
+, equationP
+) where
 
 import Control.Applicative
 import Control.Monad
@@ -43,40 +46,45 @@ charP x = Parser p
           p (c:cs) = if c == x then Just (c, cs)
                                else Nothing
 
-satisfy :: (Char -> Bool) -> Parser String
-satisfy f = Parser (\s -> Just $ span f s)
+satisfy :: (Char -> Bool) -> Parser Char
+satisfy f = Parser p
+    where p []     = Nothing
+          p (c:cs) = if f c then Just (c, cs)
+                            else Nothing
 
 digitsP :: Parser String
-digitsP = satisfy isDigit
+digitsP = some (satisfy isDigit) -- at least one digit to avoid read exception
 
 spacesP :: Parser String
-spacesP = satisfy isSpace
+spacesP = many (satisfy isSpace)
 
 sepBy :: Parser a -> Parser b -> Parser [a]
 sepBy x sep = (:) <$> x <*> many (sep *> x)
 
-surround :: Parser a -> Parser b -> Parser b
-surround surrounding x = surrounding *> x <* surrounding
-
--- Equation parsers
--- 1 * X^0 + 2 * X^1 + 1 * 3 * X^2 = 0
 
 intP :: Parser Int
 intP = read <$> numStr
-    where numStr = ((:) <$> charP '-' <*> digitsP) <|> digitsP
+    where numStr = ((:) <$> charP '-' <*> (spacesP *> digitsP))
+                    <|> (charP '+' *> spacesP *> digitsP)
+                    <|> digitsP
 
+naturalP :: Parser Int
+naturalP = read <$> digitsP
+
+
+-- Equation parsers
 termP :: Parser Term
 termP = notConstantP <|> constantP
     where constantP    = (\c -> Term (fromIntegral c) 0) <$> intP
           notConstantP = (\coef exp -> Term (fromIntegral coef) exp)
-                          <$> intP <*> (between *> intP)
+                          <$> intP <*> (between *> naturalP)
             where between = spacesP *> charP '*' *>
                             spacesP *> charP 'X' *>
                             spacesP *> charP '^' *>
                             spacesP
 
 polynomialP :: Parser Polynomial
-polynomialP = sepBy termP (spacesP *> charP '+' *> spacesP)
+polynomialP = sepBy termP spacesP
 
 equationP :: Parser Equation
 equationP = (\l r -> Equation l r)

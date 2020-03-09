@@ -1,4 +1,11 @@
-module Equation where
+module Equation
+( Equation (..)
+, Polynomial
+, Term (..)
+, degree
+, reduce
+, solve
+) where
 
 import Data.List
 
@@ -16,15 +23,16 @@ instance Ord Term where
 instance Show Term where
     show (Term 0 e) = ""
     show (Term c 0) = show (round c)
-    show (Term c e)
-      | c < 0 = " - " ++ showInside (-c)
-      | c > 0 = " + " ++ showInside c
-        where showInside co = show (round co) ++ " * X^" ++ show e
+    show (Term c e) = show (round c) ++ " * X^" ++ show e
 
 instance Show Equation where
     show (Equation l r) = showPolynomial l ++ " = " ++ showPolynomial r
         where showPolynomial [] = "0"
-              showPolynomial p  = concatMap show (filter (\(Term c _) -> c /= 0) p)
+              showPolynomial p  = dropWhile (`elem` " +") $ foldl f "" (map show p)
+                where f s (c:cs)
+                        | c == '-'  = s ++ " - " ++ cs
+                        | otherwise = s ++ " + " ++ (c:cs)
+
 
 equationMap :: (Polynomial -> Polynomial) -> Equation -> Equation
 equationMap f (Equation l r) = Equation (f l) (f r)

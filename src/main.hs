@@ -4,6 +4,7 @@ import Data.List
 import Parser
 import Equation
 
+
 main :: IO ()
 main = do
     args <- getArgs

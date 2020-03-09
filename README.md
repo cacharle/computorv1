@@ -1,3 +1,3 @@
 # computorv1
 
-Computorv1 project of school 42
+computorv1 project of school 42
