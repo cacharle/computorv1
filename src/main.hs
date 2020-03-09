@@ -1,45 +1,32 @@
 import System.Environment
-import Data.Char
+import Data.List
 
-data TokenType = Number | Add | Sub | Mul | Exp | Equal deriving (Show)
-data Token = Token TokenType Float deriving (Show)
+import Parser
+import Equation
 
+main :: IO ()
 main = do
     args <- getArgs
-    -- putStr $ show args
-    let l = lexer $ (head args)
-    putStrLn $ show l
+    checkArgs args
+    equ <- checkParsing (head args)
+    let reduced = reduce equ
+    putStrLn $ "Reduced From: " ++ show reduced
+    putSolutions (left reduced)
 
 
-lexer :: String -> [Token]
-lexer "" = []
-lexer (c:rest)
-    | c == ' ' = lexer rest
-    | isDigit c = (Token Number (read (isolateFloat (c:rest)) :: Float)) : lexer (afterFloat (c:rest))
-    | c == '+' = (Token Add 0.0) : lexer rest
-    | c == '-' = (Token Sub 0.0) : lexer rest
-    | c == '*' = (Token Mul 0.0) : lexer rest
-    | c == '^' = (Token Exp 0.0) : lexer rest
-    | c == '=' = (Token Equal 0.0) : lexer rest
+checkArgs :: [String] -> IO ()
+checkArgs args
+    | length args == 0 = fail "Usage ./computor equation"
+    | length args > 1  = fail "Too many arguments"
+    | otherwise        = return ()
 
-    where isolateFloat :: String -> String
-          isolateFloat "" = ""
-          isolateFloat (c:cs)
-            | isDigit c = c : isolateFloat cs
-            | c == '.' = c : isolateFloat cs
-            | otherwise = ""
+checkParsing :: String -> IO Equation
+checkParsing input = case parse Parser.equationP input
+                        of Nothing        -> fail "Couldnt parse equation"
+                           Just (equ, "") -> return equ
+                           Just (_, s)    -> fail "Couldnt parse equation yo"
 
-          afterFloat :: String -> String
-          afterFloat "" = ""
-          afterFloat (c:cs)
-            | isDigit c = afterFloat cs
-            | c == '.' = afterFloat cs
-            | otherwise = (c:cs)
-
-
--- parse :: Lexing -> SyntaxTree
--- parse s = 2
---
---
--- eval :: SyntaxTree -> Maybe [Float]
--- eval _ = 0.0
+putSolutions :: Polynomial -> IO ()
+putSolutions p
+    | degree p > 2 = fail "The polynomial degree is strictly greater then 2, can't solve."
+    | otherwise    = putStr $ intercalate "\n" (map show (solve p))

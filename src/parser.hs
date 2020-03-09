@@ -5,6 +5,8 @@ import Control.Monad
 import Data.Char
 import Numeric.Natural
 
+import Equation
+
 
 newtype Parser a = Parser (String -> Maybe (a, String))
 
@@ -49,10 +51,8 @@ sepBy :: Parser a -> Parser b -> Parser [a]
 sepBy x sep = ((:) <$> x <*> many (sep *> x)) <|> pure []
 
 
+-- Equation parsers
 -- 1 * X^0 + 2 * X^1 + 1 * 3 * X^2 = 0
-data Equation = Equation { left :: Polynomial, right :: Polynomial } deriving (Show)
-type Polynomial = [Term]
-data Term = Term { coefficient :: Float, exponent :: Natural } deriving (Show)
 
 coefficientP :: Parser Float
 coefficientP = read <$> (floatP <|> digitsP)
