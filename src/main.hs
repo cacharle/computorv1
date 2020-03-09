@@ -11,6 +11,7 @@ main = do
     equ <- checkParsing (head args)
     let reduced = reduce equ
     putStrLn $ "Reduced From: " ++ show reduced
+    putStrLn $ "Polynomial degree: " ++ (show $ degree $ left reduced)
     putSolutions (left reduced)
 
 

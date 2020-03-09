@@ -1,12 +1,11 @@
 module Equation where
 
-import Numeric.Natural
 import Data.List
 
 
 data Equation = Equation { left :: Polynomial, right :: Polynomial }
 type Polynomial = [Term]
-data Term = Term { coefficient :: Float, exponent :: Natural }
+data Term = Term { coefficient :: Float, exponent :: Int }
 
 instance Eq Term where
     (Term _ e1) == (Term _ e2) = e1 == e2
@@ -15,17 +14,22 @@ instance Ord Term where
     compare (Term _ e1) (Term _ e2) = compare e1 e2
 
 instance Show Term where
-    show (Term c e) = show c ++ " * X^" ++ show e
+    show (Term 0 e) = ""
+    show (Term c 0) = show (round c)
+    show (Term c e)
+      | c < 0 = " - " ++ showInside (-c)
+      | c > 0 = " + " ++ showInside c
+        where showInside co = show (round co) ++ " * X^" ++ show e
 
 instance Show Equation where
     show (Equation l r) = showPolynomial l ++ " = " ++ showPolynomial r
         where showPolynomial [] = "0"
-              showPolynomial p  = intercalate " + " (map show p)
+              showPolynomial p  = concatMap show (filter (\(Term c _) -> c /= 0) p)
 
 equationMap :: (Polynomial -> Polynomial) -> Equation -> Equation
 equationMap f (Equation l r) = Equation (f l) (f r)
 
-degree :: Polynomial -> Natural
+degree :: Polynomial -> Int
 degree p = Equation.exponent (maximum p)
 
 reduce :: Equation -> Equation
@@ -49,10 +53,10 @@ solveDegree2 :: Float -> Float -> Float -> [Float]
 solveDegree2 a b c
     | phi < 0   = []
     | phi == 0  = [(-b) / (2.0 * a)]
-    | phi > 0   = [ (-b + sqrt phi) / (2.0 * a)
+    | phi > 0   = [ (-b + sqrt phi) / (2.0 * a) -- not alowed
                   , (-b - sqrt phi) / (2.0 * a)
                   ]
-    where phi = b ^ 2 - 4.0 * a * c
+    where phi = b * b - 4.0 * a * c
 
 solveDegree1 :: Float -> Float -> Float
 solveDegree1 b c = -c / b

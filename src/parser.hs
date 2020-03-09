@@ -3,7 +3,6 @@ module Parser where
 import Control.Applicative
 import Control.Monad
 import Data.Char
-import Numeric.Natural
 
 import Equation
 
@@ -44,35 +43,42 @@ charP x = Parser p
           p (c:cs) = if c == x then Just (c, cs)
                                else Nothing
 
+satisfy :: (Char -> Bool) -> Parser String
+satisfy f = Parser (\s -> Just $ span f s)
+
 digitsP :: Parser String
-digitsP = Parser (\s -> Just $ span isDigit s)
+digitsP = satisfy isDigit
+
+spacesP :: Parser String
+spacesP = satisfy isSpace
 
 sepBy :: Parser a -> Parser b -> Parser [a]
-sepBy x sep = ((:) <$> x <*> many (sep *> x)) <|> pure []
+sepBy x sep = (:) <$> x <*> many (sep *> x)
 
+surround :: Parser a -> Parser b -> Parser b
+surround surrounding x = surrounding *> x <* surrounding
 
 -- Equation parsers
 -- 1 * X^0 + 2 * X^1 + 1 * 3 * X^2 = 0
 
-coefficientP :: Parser Float
-coefficientP = read <$> (floatP <|> digitsP)
-    where floatP = (\i _ f -> (i ++ "." ++ f))
-                        <$> digitsP <*> charP '.' <*> digitsP
-
-exponentP :: Parser Natural
-exponentP = read <$> digitsP
+intP :: Parser Int
+intP = read <$> numStr
+    where numStr = ((:) <$> charP '-' <*> digitsP) <|> digitsP
 
 termP :: Parser Term
-termP = (\coef _ exp -> Term coef exp)
-         <$> coefficientP
-         <*> (charP '*' *> charP 'X' *> charP '^')
-         <*> exponentP
+termP = notConstantP <|> constantP
+    where constantP    = (\c -> Term (fromIntegral c) 0) <$> intP
+          notConstantP = (\coef exp -> Term (fromIntegral coef) exp)
+                          <$> intP <*> (between *> intP)
+            where between = spacesP *> charP '*' *>
+                            spacesP *> charP 'X' *>
+                            spacesP *> charP '^' *>
+                            spacesP
 
 polynomialP :: Parser Polynomial
-polynomialP = sepBy termP (charP '+')
+polynomialP = sepBy termP (spacesP *> charP '+' *> spacesP)
 
 equationP :: Parser Equation
-equationP = (\l _ r -> Equation l r)
+equationP = (\l r -> Equation l r)
              <$> polynomialP
-             <*> charP '='
-             <*> polynomialP
+             <*> (spacesP *> charP '=' *> spacesP *> polynomialP)
