@@ -1,48 +1,78 @@
 module Parser where
 
 import Control.Applicative
+import Control.Monad
+import Data.Char
+import Numeric.Natural
 
 
-newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
+newtype Parser a = Parser (String -> Maybe (a, String))
+
+parse :: Parser a -> String -> Maybe (a, String)
+parse (Parser p) input = p input
 
 instance Functor Parser where
+    -- fmap :: (a -> b) -> Parser a -> Parser b
     fmap f (Parser p) = Parser new_p
         where new_p s = do
                 (x, s') <- p s
                 return (f x, s')
 
 instance Applicative Parser where
+    -- pure :: a -> Parser a
     pure x = Parser (\s -> Just (x, s))
+    -- (<*>) :: Parser (a -> b) -> Parser a -> Parser b
     (Parser p1) <*> (Parser p2) = Parser new_p
         where new_p s = do
                 (f, s') <- p1 s
                 (x, s'') <- p2 s'
                 return (f x, s'')
-    -- (Parser p1) *> (Parser p2) = Parser new_p
-    -- (Parser p1) <* (Parser p2) = Parser new_p
 
 instance Alternative Parser where
+    -- empty :: Parser a
     empty = Parser (\_ -> Nothing)
+    -- (<|>) :: Parser a -> Parser a -> Parser a
     (Parser p1) <|> (Parser p2) = Parser new_p
         where new_p s = p1 s <|> p2 s
 
 
-data Equation
-    = EquationAdd
-    | EquationSub
-    | EquationMul
-    -- | EquationDiv ?
-    | EquationExp
-    | EquationEqu
-    | EquationNum Float
-
 charP :: Char -> Parser Char
-charP c = Parser f
-    where f ""     = Nothing
-          f (c:cs) = Just (c, cs)
+charP x = Parser p
+    where p ""     = Nothing
+          p (c:cs) = if c == x then Just (c, cs)
+                               else Nothing
 
--- equationAddP :: Parser Equation
--- equationAddP = charP '+' *> EquationAdd
+digitsP :: Parser String
+digitsP = Parser (\s -> Just $ span isDigit s)
 
--- equationP :: Parser Equation
--- equationP =
+sepBy :: Parser a -> Parser b -> Parser [a]
+sepBy x sep = ((:) <$> x <*> many (sep *> x)) <|> pure []
+
+
+-- 1 * X^0 + 2 * X^1 + 1 * 3 * X^2 = 0
+data Equation = Equation { left :: Polynomial, right :: Polynomial } deriving (Show)
+type Polynomial = [Term]
+data Term = Term { coefficient :: Float, exponent :: Natural } deriving (Show)
+
+coefficientP :: Parser Float
+coefficientP = read <$> (floatP <|> digitsP)
+    where floatP = (\i _ f -> (i ++ "." ++ f))
+                        <$> digitsP <*> charP '.' <*> digitsP
+
+exponentP :: Parser Natural
+exponentP = read <$> digitsP
+
+termP :: Parser Term
+termP = (\coef _ exp -> Term coef exp)
+         <$> coefficientP
+         <*> (charP '*' *> charP 'X' *> charP '^')
+         <*> exponentP
+
+polynomialP :: Parser Polynomial
+polynomialP = sepBy termP (charP '+')
+
+equationP :: Parser Equation
+equationP = (\l _ r -> Equation l r)
+             <$> polynomialP
+             <*> charP '='
+             <*> polynomialP
