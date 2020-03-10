@@ -5,6 +5,7 @@ module Equation
 , degree
 , reduce
 , solve
+, filterNull
 ) where
 
 import Data.List
@@ -26,19 +27,26 @@ instance Show Term where
     show (Term c e) = show (round c) ++ " * X^" ++ show e
 
 instance Show Equation where
-    show (Equation l r) = showPolynomial l ++ " = " ++ showPolynomial r
+    show (Equation l r) = showPolynomial (filterNull l)
+                          ++ " = "
+                          ++ showPolynomial (filterNull r)
         where showPolynomial [] = "0"
               showPolynomial p  = dropWhile (`elem` " +") $ foldl f "" (map show p)
-                where f s (c:cs)
+                where f s "" = s
+                      f s (c:cs)
                         | c == '-'  = s ++ " - " ++ cs
                         | otherwise = s ++ " + " ++ (c:cs)
 
+
+filterNull :: Polynomial -> Polynomial
+filterNull = filter (\t -> coefficient t /= 0)
 
 equationMap :: (Polynomial -> Polynomial) -> Equation -> Equation
 equationMap f (Equation l r) = Equation (f l) (f r)
 
 degree :: Polynomial -> Int
-degree p = Equation.exponent (maximum p)
+degree [] = 0
+degree p  = Equation.exponent (maximum p)
 
 reduce :: Equation -> Equation
 reduce equ = Equation (merge (left stdForm) (right stdForm)) []

@@ -59,32 +59,45 @@ spacesP :: Parser String
 spacesP = many (satisfy isSpace)
 
 sepBy :: Parser a -> Parser b -> Parser [a]
-sepBy x sep = (:) <$> x <*> many (sep *> x)
+sepBy x sep = many (sep *> x)
 
-
-intP :: Parser Int
-intP = read <$> numStr
+prefixedIntP :: Parser Int
+prefixedIntP = read <$> numStr
     where numStr = ((:) <$> charP '-' <*> (spacesP *> digitsP))
                     <|> (charP '+' *> spacesP *> digitsP)
-                    <|> digitsP
+
+intP :: Parser Int
+intP = prefixedIntP <|> (read <$> digitsP)
 
 naturalP :: Parser Int
 naturalP = read <$> digitsP
 
+signP :: Parser Char
+signP = charP '-' <|> charP '+'
+
 
 -- Equation parsers
-termP :: Parser Term
-termP = notConstantP <|> constantP
-    where constantP    = (\c -> Term (fromIntegral c) 0) <$> intP
+
+unsignedTermP :: Parser Term
+unsignedTermP = notConstantP <|> constantP
+    where constantP    = (\c -> Term (fromIntegral c) 0) <$> naturalP
           notConstantP = (\coef exp -> Term (fromIntegral coef) exp)
-                          <$> intP <*> (between *> naturalP)
+                          <$> naturalP <*> (between *> naturalP)
             where between = spacesP *> charP '*' *>
                             spacesP *> charP 'X' *>
                             spacesP *> charP '^' *>
                             spacesP
 
+signedTermP :: Parser Term
+signedTermP = signF <$> signP <*> (spacesP *> unsignedTermP)
+    where signF '-' (Term c e) = Term (-c) e
+          signF _   t          = t
+
+firstTermP :: Parser Term
+firstTermP = signedTermP <|> unsignedTermP
+
 polynomialP :: Parser Polynomial
-polynomialP = sepBy termP spacesP
+polynomialP = ((:) <$> firstTermP <*> (spacesP *> (sepBy signedTermP spacesP)))
 
 equationP :: Parser Equation
 equationP = (\l r -> Equation l r)

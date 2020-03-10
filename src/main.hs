@@ -1,20 +1,31 @@
 import System.Environment
+import System.IO
+import System.IO.Error
+import Control.Exception
 import Data.List
 
 import Parser
 import Equation
 
-
 main :: IO ()
-main = do
+main = catchIOError tryMain handler
+    where handler e
+            | isUserError e = putStrLn $ trimUserError (show e)
+            | otherwise     = putStrLn "Error"
+            where trimUserError s = init $ tail $ dropWhile (/='(') s
+
+tryMain :: IO ()
+tryMain = do
     args <- getArgs
     checkArgs args
     equ <- checkParsing (head args)
     let reduced = reduce equ
+        l       = filterNull $ left reduced
     putStrLn $ "Reduced From: " ++ show reduced
-    putStrLn $ "Polynomial degree: " ++ (show $ degree $ left reduced)
-    putSolutions (left reduced)
-
+    putStrLn $ "Polynomial degree: " ++ (show $ degree l)
+    case l of []  -> putStrLn "Infinite solutions"
+              [_] -> putStrLn "No solution"
+              _   -> putSolutions l
 
 checkArgs :: [String] -> IO ()
 checkArgs args
