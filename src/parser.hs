@@ -40,17 +40,14 @@ instance Alternative Parser where
         where new_p s = p1 s <|> p2 s
 
 
-charP :: Char -> Parser Char
-charP x = Parser p
-    where p ""     = Nothing
-          p (c:cs) = if c == x then Just (c, cs)
-                               else Nothing
-
 satisfy :: (Char -> Bool) -> Parser Char
 satisfy f = Parser p
     where p []     = Nothing
           p (c:cs) = if f c then Just (c, cs)
                             else Nothing
+
+charP :: Char -> Parser Char
+charP c = satisfy (c ==)
 
 digitsP :: Parser String
 digitsP = some (satisfy isDigit) -- at least one digit to avoid read exception
@@ -58,16 +55,8 @@ digitsP = some (satisfy isDigit) -- at least one digit to avoid read exception
 spacesP :: Parser String
 spacesP = many (satisfy isSpace)
 
-sepBy :: Parser a -> Parser b -> Parser [a]
-sepBy x sep = many (sep *> x)
-
-prefixedIntP :: Parser Int
-prefixedIntP = read <$> numStr
-    where numStr = ((:) <$> charP '-' <*> (spacesP *> digitsP))
-                    <|> (charP '+' *> spacesP *> digitsP)
-
-intP :: Parser Int
-intP = prefixedIntP <|> (read <$> digitsP)
+sepBy :: Parser b -> Parser a -> Parser [a]
+sepBy sep x = many (sep *> x)
 
 naturalP :: Parser Int
 naturalP = read <$> digitsP
@@ -75,13 +64,6 @@ naturalP = read <$> digitsP
 floatPositiveP :: Parser Float
 floatPositiveP = (f <$> digitsP <*> charP '.' <*> digitsP) <|> (read <$> digitsP)
     where f pos dot dec = read $ pos ++ [dot] ++ dec
-
-signP :: Parser Char
-signP = charP '-' <|> charP '+'
-
-optionnal :: Parser a -> a -> Parser a
-optionnal p placeholder = p <|> pure placeholder
-
 
 -- Equation parsers
 
@@ -102,15 +84,14 @@ unsignedTermP = fullP <|> varExpP <|> varConstP <|> constP
         expP = spacesP *> charP '^' *> spacesP
 
 signedTermP :: Parser Term
-signedTermP = signF <$> signP <*> (spacesP *> unsignedTermP)
-    where signF '-' (Term c e) = Term (-c) e
+signedTermP = signF <$> signP <* spacesP <*> unsignedTermP
+    where signP = charP '-' <|> charP '+'
+          signF '-' (Term c e) = Term (-c) e
           signF _   t          = t
 
-firstTermP :: Parser Term
-firstTermP = signedTermP <|> unsignedTermP
-
 polynomialP :: Parser Polynomial
-polynomialP = ((:) <$> firstTermP <*> (spacesP *> (sepBy signedTermP spacesP)))
+polynomialP = (:) <$> firstTermP <* spacesP <*> (sepBy spacesP signedTermP)
+    where firstTermP = signedTermP <|> unsignedTermP
 
 equationP :: Parser Equation
 equationP = (\l r -> Equation l r)

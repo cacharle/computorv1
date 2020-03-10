@@ -69,8 +69,8 @@ solveDegree2 :: Float -> Float -> Float -> [Float]
 solveDegree2 a b c
     | phi < 0   = []
     | phi == 0  = [(-b) / (2.0 * a)]
-    | phi > 0   = [ (-b + sqrt phi) / (2.0 * a) -- not alowed
-                  , (-b - sqrt phi) / (2.0 * a)
+    | phi > 0   = [ (-b + mySqrt phi) / (2.0 * a) -- not alowed
+                  , (-b - mySqrt phi) / (2.0 * a)
                   ]
     where phi = b * b - 4.0 * a * c
 
@@ -82,3 +82,14 @@ solve [t0]         = []
 solve [t0, t1]     = [solveDegree1 (coefficient t1) (coefficient t0)]
 solve [t0, t1, t2] = solveDegree2 (coefficient t2) (coefficient t1) (coefficient t0)
 solve _            = undefined
+
+mySqrt :: Float -> Float
+mySqrt n
+  | n < 0     = undefined
+  | otherwise = mySqrt' (n / 2)
+    where mySqrt' x = if abs (x * x - n) < 0.01
+                         then x
+                         else mySqrt' xn
+            where xn = b - (a * a) / (2 * b)
+                    where a = (n - x * x) / (2 * x)
+                          b = x + a

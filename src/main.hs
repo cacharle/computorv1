@@ -7,6 +7,7 @@ import Data.List
 import Parser
 import Equation
 
+
 main :: IO ()
 main = catchIOError tryMain handler
     where handler e
