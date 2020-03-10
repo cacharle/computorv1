@@ -23,9 +23,7 @@ tryMain = do
         l       = filterNull $ left reduced
     putStrLn $ "Reduced From: " ++ show reduced
     putStrLn $ "Polynomial degree: " ++ (show $ degree l)
-    case l of []  -> putStrLn "Infinite solutions"
-              [_] -> putStrLn "No solution"
-              _   -> putSolutions l
+    putSolutions l
 
 checkArgs :: [String] -> IO ()
 checkArgs args
@@ -40,6 +38,13 @@ checkParsing input = case parse Parser.equationP input
                            Just (_, s)    -> fail "Couldnt parse equation yo"
 
 putSolutions :: Polynomial -> IO ()
-putSolutions p
-    | degree p > 2 = fail "The polynomial degree is strictly greater then 2, can't solve."
-    | otherwise    = putStr $ intercalate "\n" (map show (solve p))
+putSolutions []  = putStrLn "Infinite solutions" -- 0 = 0
+putSolutions [_] = putStrLn "No solution"        -- c = 0
+putSolutions p   = case degree p of
+    1 -> putStrLn $ "The solution is:\n" ++ show (head solutions)
+    2 -> do case length solutions of 0 -> putStrLn "Discriminant is strictly negative, there is no solution."
+                                     1 -> putStrLn "Discriminant is equal to 0, the solution is:"
+                                     2 -> putStrLn "Discriminant is strictly positive, the two solutions are:"
+            putStr $ intercalate "\n" $ map show solutions
+    _ -> fail "The polynomial degree is strictly greater then 2, can't solve."
+    where solutions = sort $ solve p

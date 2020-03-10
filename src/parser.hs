@@ -72,21 +72,34 @@ intP = prefixedIntP <|> (read <$> digitsP)
 naturalP :: Parser Int
 naturalP = read <$> digitsP
 
+floatPositiveP :: Parser Float
+floatPositiveP = (f <$> digitsP <*> charP '.' <*> digitsP) <|> (read <$> digitsP)
+    where f pos dot dec = read $ pos ++ [dot] ++ dec
+
 signP :: Parser Char
 signP = charP '-' <|> charP '+'
+
+optionnal :: Parser a -> a -> Parser a
+optionnal p placeholder = p <|> pure placeholder
 
 
 -- Equation parsers
 
 unsignedTermP :: Parser Term
-unsignedTermP = notConstantP <|> constantP
-    where constantP    = (\c -> Term (fromIntegral c) 0) <$> naturalP
-          notConstantP = (\coef exp -> Term (fromIntegral coef) exp)
-                          <$> naturalP <*> (between *> naturalP)
-            where between = spacesP *> charP '*' *>
-                            spacesP *> charP 'X' *>
-                            spacesP *> charP '^' *>
-                            spacesP
+unsignedTermP = fullP <|> varExpP <|> varConstP <|> constP
+    where
+        -- 1 * X ^ 1
+        fullP     = (\c e -> Term c e) <$> floatPositiveP <* mulP <* varP <* expP <*> naturalP
+        -- X ^ 1
+        varExpP   = (\e -> Term 1 e)   <$> (varP *> expP *> naturalP)
+        -- 1 * X
+        varConstP = (\c -> Term c 1)   <$> floatPositiveP <* mulP <* varP
+        -- 1
+        constP    = (\c -> Term c 0)   <$> floatPositiveP
+
+        mulP = spacesP *> charP '*' *> spacesP
+        varP = spacesP *> charP 'X' *> spacesP
+        expP = spacesP *> charP '^' *> spacesP
 
 signedTermP :: Parser Term
 signedTermP = signF <$> signP <*> (spacesP *> unsignedTermP)
